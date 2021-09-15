@@ -348,6 +348,7 @@ public class PipelineOptionsFactory {
           PipelineOptionsValidator.validate(klass, t);
         }
       }
+
       return t;
     }
   }
@@ -1290,7 +1291,8 @@ public class PipelineOptionsFactory {
             Predicates.and(
                 input1 -> !input1.isSynthetic(),
                 input -> !knownMethodsNames.contains(input.getName()),
-                input11 -> !Modifier.isStatic(input11.getModifiers()))));
+                input11 -> !Modifier.isStatic(input11.getModifiers()),
+        		    input111 -> !input111.isDefault())));
     checkArgument(
         unknownMethods.isEmpty(),
         "Methods [%s] on [%s] do not conform to being bean properties.",

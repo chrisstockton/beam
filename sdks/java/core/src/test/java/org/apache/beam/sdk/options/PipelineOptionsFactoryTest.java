@@ -2322,4 +2322,19 @@ public class PipelineOptionsFactoryTest {
     assertEquals(PipelineOptionType.Enum.BOOLEAN, booleanWrapperDesc.getType());
     assertThat(booleanWrapperDesc.getDefaultValue(), equalTo("false"));
   }
+
+  /** Test interface. */
+  public interface OptionsWithDefaultNonBeanMethod extends TestPipelineOptions {
+    default String defaultNonBeanMethod() {
+      return "modified: " + getTestPipelineOption();
+    }
+  }
+
+  @Test
+  public void testHavingDefaultNonBeanMethodAllowed() {
+    OptionsWithDefaultNonBeanMethod options = PipelineOptionsFactory
+        .as(OptionsWithDefaultNonBeanMethod.class);
+    options.setTestPipelineOption("value");
+    assertEquals("modified: " + options.getTestPipelineOption(), options.defaultNonBeanMethod());
+  }
 }

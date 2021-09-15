@@ -38,8 +38,14 @@ import java.io.IOException;
 import java.io.NotSerializableException;
 import java.io.Serializable;
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
@@ -173,10 +179,32 @@ class ProxyInvocationHandler implements InvocationHandler, Serializable {
       } else if (settersToPropertyNames.containsKey(methodName)) {
         options.put(settersToPropertyNames.get(methodName), BoundValue.fromExplicitOption(args[0]));
         return Void.TYPE;
+      } else if (method.isDefault()) {
+        return invokeDefaultInterfaceMethod(proxy, method, args);
       }
     }
     throw new RuntimeException(
         "Unknown method [" + method + "] invoked with args [" + Arrays.toString(args) + "].");
+  }
+
+  private Object invokeDefaultInterfaceMethod(Object proxy, Method method, Object[] args) {
+    try {
+      // We need to override the allowed modes so that we can access the default method on the
+      // interface.
+      Lookup lookup = MethodHandles.lookup().in(method.getDeclaringClass());
+      Field allowedModes = lookup.getClass().getDeclaredField("allowedModes");
+      allowedModes.setAccessible(true);
+      allowedModes.set(lookup, Modifier.PRIVATE);
+
+      return lookup
+          .unreflectSpecial(method, method.getDeclaringClass())
+          .bindTo(proxy)
+          .invokeWithArguments(args);
+    } catch (Throwable e) {
+      throw new RuntimeException(
+          "Unable to invoke default interface method ["
+              + method.getDeclaringClass() + "." + method.getName() + "].", e);
+    }
   }
 
   public String getOptionName(Method method) {
